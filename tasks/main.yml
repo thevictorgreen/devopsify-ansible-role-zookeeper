@@ -1,6 +1,80 @@
 ---
-# tasks file for aptly
+# tasks file for zookeeper
 - name: Update Repositories
   become: yes
   apt:
     update_cache: yes
+
+- name: Install Packages
+  become: yes
+  apt:
+    name: "{{ packages }}"
+    state: installed
+  ignore_errors: "{{ ansible_check_mode }}"
+  vars:
+    packages:
+      - openjdk-8-jdk-headless
+
+- name: Create zookeeper automation directory
+  become: yes
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - '/root/.zk_automate'
+    - '/var/zookeeper/data'
+
+- name: Create zk_init.sh File
+  become: yes
+  copy:
+    src: zk_init.sh
+    dest: /root/.zk_automate/zk_init.sh
+
+- name: Create environment File
+  become: yes
+  copy:
+    src: environment
+    dest: /root/.zk_automate/environment
+
+- name: Create zoo.cfg File
+  become: yes
+  copy:
+    src: zoo.cfg
+    dest: /root/.zk_automate/zoo.cfg
+
+- name: Set environment in zoo.cfg file
+  become: yes
+  shell: sed -i s/XXXXX/$(hostname | cut -d. -f2)/g /root/.zk_automate/zoo.cfg
+
+- name: Set domain in zoo.cfg file
+  become: yes
+  shell: sed -i s/YYYYY/$(hostname | cut -d. -f3)/g /root/.zk_automate/zoo.cfg
+
+- name: Set tld in zoo.cfg file
+  become: yes
+  shell: sed -i s/ZZZZZ/$(hostname | cut -d. -f4)/g /root/.zk_automate/zoo.cfg
+
+- name: Create myid File
+  become: yes
+  copy:
+    src: myid
+    dest: /root/.zk_automate/myid
+
+- name: Create zk.service File
+  become: yes
+  copy:
+    src: zk.service
+    dest: /root/.zk_automate/zk.service
+
+- name: Change permissions on zk_init.sh
+  become: yes
+  file:
+    path: /root/.zk_automate/zk_init.sh
+    mode: "u+rwx"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: Run Zookeeper Initialization script
+  become: yes
+  command: /root/.zk_automate/zk_init.sh
+  args:
+    executable: /bin/bash
